@@ -1,0 +1,18 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  body{width:290px;margin:0;padding:14px;font:700 14px/1.4 ui-rounded,"Segoe UI",system-ui,sans-serif;color:#0b1b52;background:#f3f7ff}
+  h1{font-size:1rem;margin:0 0 8px} .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .muted{color:#5b6b9a;font-size:.8rem;font-weight:700} .err{color:#c4106f;font-size:.82rem;margin-top:8px}
+  a{color:#1668ff;font-weight:800;text-decoration:none;font-size:.85rem}
+  .sw{appearance:none;width:46px;height:26px;border-radius:99px;background:#c7d3f5;position:relative;cursor:pointer}
+  .sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px #0004;transition:.15s}
+  .sw:checked{background:#3ec91a}.sw:checked::after{left:23px}
+  .box{background:#fff;border-radius:12px;padding:10px;margin:10px 0}
+</style>
+<h1>Current Recap</h1>
+<div class="row"><span id="state">Autosave</span><input id="on" class="sw" type="checkbox"></div>
+<div class="box"><div id="count" class="muted"></div><div id="last" class="muted"></div></div>
+<div id="err" class="err"></div>
+<div class="row"><a href="#" id="open">Open Current Recap</a><a href="#" id="setup">Settings</a></div>
+<script src="popup.js"></script>

@@ -1,0 +1,14 @@
+# Apache. For nginx see README.md
+<FilesMatch "^(config(\.local)?\.php|config\.local\.example\.php)$">
+  Require all denied
+</FilesMatch>
+RedirectMatch 403 ^/?(lib|cron)/
+AddType application/manifest+json .json
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+  <Files "sw.js">
+    Header set Cache-Control "no-cache"
+    Header set Service-Worker-Allowed "./"
+  </Files>
+</IfModule>

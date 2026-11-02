@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Current Recap – Collector",
+  "version": "1.0.0",
+  "description": "Automatically saves the Facebook, Instagram, Threads and content you view to your own Current Recap.",
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["storage"],
+  "optional_host_permissions": ["https://*/*", "http://localhost/*", "http://127.0.0.1/*"],
+  "background": { "service_worker": "background.js", "scripts": ["background.js"] },
+  "content_scripts": [{
+    "matches": ["https://*.facebook.com/*", "https://*.instagram.com/*", "https://*.threads.net/*", "https://*.threads.com/*"],
+    "js": ["tracker.js", "content.js"],
+    "run_at": "document_idle"
+  }],
+  "action": { "default_popup": "popup.html", "default_title": "Current Recap – Collector", "default_icon": { "32": "icons/32.png" } },
+  "options_ui": { "page": "options.html", "open_in_tab": true },
+  "browser_specific_settings": { "gecko": { "id": "current-recap@example.invalid" } }
+}

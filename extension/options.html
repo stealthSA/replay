@@ -1,0 +1,33 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Current Recap setup</title>
+<style>
+  body{font:600 15px/1.5 ui-rounded,"Segoe UI",system-ui,sans-serif;background:#f3f7ff;color:#0b1b52;margin:0;padding:32px 16px}
+  .card{max-width:560px;margin:0 auto;background:#fff;border:4px solid #1668ff;border-radius:22px;padding:22px}
+  h1{margin:0 0 6px;font-size:1.4rem} p{color:#5b6b9a;margin:6px 0 14px}
+  label{display:block;font-weight:800;margin:14px 0 4px}
+  input{width:100%;box-sizing:border-box;padding:11px 12px;border:2px solid #dfe8ff;border-radius:12px;font:inherit}
+  button{margin-top:18px;border:0;border-radius:999px;padding:11px 22px;font:inherit;font-weight:900;color:#fff;background:#1668ff;cursor:pointer}
+  #status{margin-top:12px;font-weight:800} ul{color:#5b6b9a;padding-left:18px}
+</style>
+<div class="card">
+  <h1>Current Recap</h1>
+  <p>Connect the extension to your Current Recap server. In Current Recap go to <b>Connections → Create token</b>, create an access token, then paste the server address and token here.</p>
+  <label for="server">Server address</label>
+  <input id="server" placeholder="https://your-site.example/current/" autocomplete="off">
+  <label for="token">Access token</label>
+  <input id="token" placeholder="cur_…" autocomplete="off" spellcheck="false">
+  <label for="min">Save an item after this many seconds on it (3–60)</label>
+  <input id="min" type="number" min="3" max="60" value="8">
+  <button id="save">Save &amp; test connection</button>
+  <div id="status"></div>
+  <hr style="border:0;border-top:2px dashed #dfe8ff;margin:22px 0">
+  <b>What this extension does</b>
+  <ul>
+    <li>Runs only on Facebook, Instagram, Threads and Meta Quest pages.</li>
+    <li>Sends the <b>link and page title</b> of a post, reel, video or story you stay on, plus time spent, to <b>your own</b> Current Recap server. Nothing goes anywhere else.</li>
+    <li>Never runs on Messenger, WhatsApp or Meta AI, and ignores feeds, profiles and search pages.</li>
+    <li>Use the toolbar icon to pause it at any time.</li>
+  </ul>
+</div>
+<script src="options.js"></script>

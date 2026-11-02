@@ -1,0 +1,25 @@
+{
+  "name": "Current – Stay Current",
+  "short_name": "Current",
+  "description": "Browse Meta's platforms and keep a smart, self-cleaning history of what you interact with.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#1668ff",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "share_target": {
+    "action": "./",
+    "method": "GET",
+    "params": { "title": "title", "text": "text", "url": "url" }
+  },
+  "shortcuts": [
+    { "name": "History", "url": "./?view=history" },
+    { "name": "Settings", "url": "./?view=settings" }
+  ]
+}

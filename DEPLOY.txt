@@ -1,0 +1,17 @@
+LIVE SERVER DEPLOY
+1. Upload the CONTENTS of this folder into your web root (index.html must sit directly in the root, or in the subfolder you put in BASE_URL).
+2. Edit config.local.php (everything marked CHANGE). Do not run start scripts or "php -S" on a live server; Apache/nginx/XAMPP serves it.
+3. Make storage/ writable by PHP (or point STORAGE_DIR at a writable folder).
+4. Open https://YOURDOMAIN/health.php  - it prints the exact redirect/callback URLs to paste into the Meta app and checks permissions.
+5. Meta app: Valid OAuth Redirect URI = BASE_URL/callback-facebook.php (also callback-instagram.php, callback-threads.php);
+   Deauthorize = BASE_URL/meta/deauthorize.php; Data deletion = BASE_URL/meta/data-deletion.php; Privacy = BASE_URL/privacy.php; Terms = BASE_URL/terms.php.
+6. nginx: deny /app, /storage, /tools, /cron paths (the .htaccess files only work on Apache).
+Optional cron: */15 * * * * php /path/cron/trends.php   and   */30 * * * * php /path/cron/sync.php
+
+FILL IN CONTENT (F1, MotoGP, sport, music, entertainment, tech, fashion, cars...)
+ a) Set 'CRON_KEY' in config.local.php to a long random string, then open this once in a browser:
+      https://YOURDOMAIN/refresh.php?key=YOUR-CRON_KEY
+    It prints how many items were saved (takes up to a minute). Re-open it or schedule it to refresh.
+ b) Schedule it: cPanel > Cron Jobs:  */30 * * * *  /usr/local/bin/php /home/USER/public_html/refresh.php
+    or a free web cron (cron-job.org) calling the URL above every 30 minutes.
+ c) If it says "Nothing saved", the host blocks outbound HTTPS; ask the host to enable curl / outbound connections.

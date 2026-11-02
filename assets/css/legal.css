@@ -1,0 +1,10 @@
+:root { --bg:#030a26; --panel:#0a1646; --panel2:#132062; --text:#f3f7ff; --muted:#9fb1f0; --blue:#1b5fff; --line:rgba(255,255,255,.12); }
+:root[data-theme="light"] { --bg:#e9efff; --panel:#fff; --panel2:#eef2ff; --text:#0a2a8c; --muted:#5a6eab; --line:rgba(10,42,140,.14); }
+* { box-sizing: border-box; } body { margin:0; background:var(--bg); color:var(--text); font:500 1rem/1.6 Fredoka, ui-rounded, "Segoe UI", system-ui, sans-serif; }
+header { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 24px; background:var(--panel); } header img { height:54px; width:auto; display:block; }
+nav { display:flex; gap:18px; flex-wrap:wrap; } a { color:inherit; } nav a { color:var(--muted); font-weight:600; text-decoration:none; } nav a:hover { color:var(--text); }
+main { max-width:760px; margin:24px auto; padding:28px; background:var(--panel); border-radius:18px; } h1 { margin:0 0 6px; font-size:2rem; letter-spacing:-.02em; } h2 { margin:26px 0 6px; font-size:1.2rem; }
+.muted { color:var(--muted); } li { margin:6px 0; } main a { color:#4d8bff; }
+.card { background:var(--panel2); border-radius:14px; padding:16px; margin:16px 0; display:grid; gap:10px; } input { width:100%; padding:11px 14px; border-radius:10px; border:1.5px solid var(--line); background:var(--bg); color:var(--text); font:inherit; }
+button { justify-self:start; border:0; border-radius:999px; background:var(--blue); color:#fff; font:inherit; font-weight:600; padding:10px 22px; cursor:pointer; }
+footer { max-width:760px; margin:0 auto 32px; padding:0 28px; color:var(--muted); font-size:.85rem; }

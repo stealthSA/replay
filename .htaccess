@@ -1,0 +1,35 @@
+# Current Recap — the app's running files (index.html, *.php, assets/, meta/) live in the site root.
+# Private folders stay as folders and are closed to the web.
+DirectoryIndex index.html index.php
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^(app|storage|tools|cron|tests)(/|$) - [R=404,L]
+  RewriteRule ^config\.local.*\.php$ - [R=404,L]
+</IfModule>
+<IfModule !mod_rewrite.c>
+  <FilesMatch "^config\.local.*\.php$">
+    Require all denied
+  </FilesMatch>
+</IfModule>
+<FilesMatch "\.(sqlite|sqlite-wal|sqlite-shm|key|log)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+  </IfModule>
+</FilesMatch>
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Always re-check the app's own scripts, styles and page so updates show straight away (static pictures are still cached).
+<IfModule mod_headers.c>
+  <FilesMatch "\.(js|css|html)$">
+    Header set Cache-Control "no-cache, must-revalidate"
+  </FilesMatch>
+</IfModule>

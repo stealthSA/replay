@@ -1,0 +1,11 @@
+# Secrets and local config: never commit these
+config.local.php
+replay/config.local.php
+# Runtime data
+storage/db/*
+storage/mockups/*
+replay/data/*
+!replay/data/.htaccess
+!storage/.htaccess
+*.log
+.DS_Store
