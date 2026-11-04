@@ -47,7 +47,7 @@ function postCard(it, o = {}) {
     it.topics?.length ? h('div', { class: 'ttags' }, it.topics.map((t) => h('span', { class: 'ttag' }, (t.kind === 'hashtag' ? '#' : '') + t.topic))) : '',
     it.sponsor ? h('div', { class: 'sponsor' }, it.sponsor.mockup ? h('img', { class: 'adpic', src: it.sponsor.mockup, alt: 'Ad picture from ' + it.sponsor.brand }) : ic('megaphone'), h('span', {}, 'Sponsored by ', h('strong', {}, it.sponsor.brand), it.sponsor.message ? ' · ' + it.sponsor.message : '', safeUrl(it.sponsor.link) ? [' ', h('a', { href: it.sponsor.link, target: '_blank', rel: 'noopener noreferrer sponsored' }, 'Learn more')] : '')) : '',
     h('div', { class: 'tacts' }, url ? h('a', { class: 'btn ghost sm', href: url, target: '_blank', rel: 'noopener noreferrer' }, ic('external'), 'Open') : '',
-      o.onOffer && it.biddable ? h('button', { class: 'btn yellow sm', onclick: () => o.onOffer(it) }, ic('megaphone'), 'Send ad offer') : (it.biddable ? h('span', { class: 'tag' }, 'Open to ad offers') : '')));
+      ''));   // ad offers are hidden
   return h('article', { class: 'tcard' }, media, body);
 }
 
@@ -133,10 +133,10 @@ async function trendingMine(root, again, pf) {
 function sharePanel(p, again) {
   const save = (k) => (v, el) => { el.disabled = true; guard(async () => { await api('prefs.save', { body: { [k]: v } }); }).then(again); };
   return h('section', { class: 'panel stack' }, h('h3', {}, 'Who can see how my posts perform?'),
-    h('p', { class: 'muted' }, 'Your numbers are private until you choose. You can change this at any time and your posts leave Trending and advertisers’ lists straight away.'),
+    h('p', { class: 'muted' }, 'Your numbers are private until you choose. You can change this at any time and your posts leave Trending straight away.'),
     toggleRow('My circle', 'People you and I both accepted in My circle can see which of my posts are taking off.', p.share_circle, save('share_circle')),
-    toggleRow('Everyone: appear in Trending', 'My post stats can appear in Trending for all signed-in users.', p.share_pool, save('share_pool')),
-    toggleRow('Open to ad offers', 'Advertisers can send an offer for my high-engagement posts. I approve or decline each one; nothing runs without my yes.', p.open_to_ads, save('open_to_ads')));
+    toggleRow('Everyone: appear in Trending', 'My post stats can appear in Trending for all signed-in users.', p.share_pool, save('share_pool'))
+  );
 }
 
 /* ------------------------------------------------------ my circle suggestions */
@@ -225,7 +225,8 @@ const DEST = { opportunity: '#/bids?tab=opps', surge: '#/bids?tab=opps', circle:
 export function bell() {
   const dot = h('span', { class: 'bdot', hidden: true }); let panel = null, timer = null;
   const btn = h('button', { class: 'ibtn bell', 'aria-label': 'Notifications', 'aria-haspopup': 'dialog', onclick: (e) => { e.stopPropagation(); panel ? close() : open(); } }, ic('bell'), dot);
-  async function refresh() { try { const d = await api('notif.list'); dot.textContent = d.unread > 9 ? '9+' : String(d.unread); dot.hidden = !d.unread; return d; } catch { return null; } }
+  const hideN = (n) => n.type.startsWith('bid') || n.type === 'opportunity' || n.type === 'surge';   // advertiser / bid notifications are hidden
+  async function refresh() { try { const d = await api('notif.list'); d.items = d.items.filter((n) => !hideN(n)); d.unread = d.items.filter((n) => !n.read).length; dot.textContent = d.unread > 9 ? '9+' : String(d.unread); dot.hidden = !d.unread; return d; } catch { return null; } }
   function close() { panel?.remove(); panel = null; document.removeEventListener('click', away); document.removeEventListener('keydown', esc); }
   const away = (e) => { if (panel && !panel.contains(e.target)) close(); }; const esc = (e) => { if (e.key === 'Escape') close(); };
   async function open() {

@@ -11,15 +11,15 @@ export async function api(action, { params = {}, body } = {}) {
   return j;
 }
 
-// Dark is the default. Light is opt-in and remembered (device first, then account).
-export const getTheme = () => { try { const t = localStorage.getItem('recap.theme'); return t === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } };
+// Light is the default. Dark (blue) is opt-in and remembered on this device.
+export const getTheme = () => { try { const t = localStorage.getItem('recap.theme2'); return t === 'dark' ? 'dark' : 'light'; } catch { return 'light'; } };
 export function applyTheme(t) {
   document.documentElement.dataset.theme = t === 'light' ? 'light' : 'dark';
-  document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'light' ? '#ffffff' : '#071a45');
+  document.querySelector('meta[name=theme-color]')?.setAttribute('content', t === 'light' ? '#ffffff' : '#0a2f78');
 }
 export function setTheme(t) {
   t = t === 'dark' ? 'dark' : 'light';
-  try { localStorage.setItem('recap.theme', t); } catch {}
+  try { localStorage.setItem('recap.theme2', t); } catch {}
   applyTheme(t);
   if (state.user) api('settings.save', { body: { theme: t } }).catch(() => {});
   return t;

@@ -6,29 +6,86 @@ import { openItem } from './viewer.js';
 const open = (it) => openItem(it);
 
 /* ------------------------------------------------------------ login */
+/* Facebook sign-in for installed apps: keep a secret here, send only its hash, and collect the login once Facebook finishes in the other browser. */
+const HK = 'recap.fbh';
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+function pollHandoff() {
+  let raw = null; try { raw = JSON.parse(localStorage.getItem(HK) || 'null'); } catch {}
+  if (!raw || Date.now() - raw.t > 10 * 60 * 1000) { try { localStorage.removeItem(HK); } catch {} return; }
+  if (window.__recapPoll) return; let busy = false;
+  const stop = () => { clearInterval(window.__recapPoll); window.__recapPoll = null; document.removeEventListener('visibilitychange', tick); };
+  const tick = async () => {
+    if (busy || document.hidden) return; busy = true;
+    try {
+      const r = await api('auth.handoff', { body: { secret: raw.s } });
+      if (r.ok) { stop(); try { localStorage.removeItem(HK); } catch {} location.hash = '#/trending'; location.reload(); return; }
+      if (Date.now() - raw.t > 10 * 60 * 1000) { stop(); try { localStorage.removeItem(HK); } catch {} }
+    } catch {} busy = false;
+  };
+  window.__recapPoll = setInterval(tick, 2000); document.addEventListener('visibilitychange', tick); tick();
+}
+async function fbSignIn(e) {
+  const href = e.currentTarget.getAttribute('href'); e.preventDefault();
+  try {
+    if (!window.crypto?.subtle) throw new Error('no crypto');
+    const s = hex(crypto.getRandomValues(new Uint8Array(24))), h = hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)));
+    localStorage.setItem(HK, JSON.stringify({ s, t: Date.now() })); pollHandoff(); location.href = href + '&h=' + h;   // keep polling in case this page stays alive while the sheet is open
+  } catch { location.href = href; }
+}
+
+/* ---- forgot / reset password ---- */
+function pwBox(label, autocomplete) {
+  const i = h('input', { type: 'password', autocomplete, placeholder: label, required: true, minlength: 8 });
+  const t = h('label', { class: 'showpw' }, h('input', { type: 'checkbox', onchange: (e) => { i.type = e.target.checked ? 'text' : 'password'; } }), ' Show password');
+  return [i, t];
+}
+const authCard = (cfg, ...kids) => h('div', { class: 'login' }, h('img', { src: 'assets/img/logo.png', alt: cfg.app || 'Current Recap', class: 'biglogo' }), ...kids,
+  h('p', { class: 'fine' }, h('a', { href: 'privacy.php' }, 'Privacy'), ' · ', h('a', { href: 'terms.php' }, 'Terms')));
+function forgotView(root) {
+  const cfg = state.cfg; const em = h('input', { type: 'email', autocomplete: 'email', placeholder: 'you@example.com', required: true }); const out = h('div');
+  const form = h('form', { class: 'stack', onsubmit: (e) => { e.preventDefault(); guard(async () => {
+    const r = await api('auth.forgot', { body: { email: em.value } });
+    out.replaceChildren(h('div', { class: 'banner' }, 'If that email belongs to a password account, we have sent a link to reset it. It works once and expires in 1 hour. Check your spam folder too.'),
+      r.dev_link ? h('p', { class: 'fine' }, 'Test link: ', h('a', { href: r.dev_link, onclick: () => setTimeout(() => location.reload(), 50) }, 'open reset page')) : '');
+  }); } }, field('Email', em), h('button', { class: 'btn big green block', type: 'submit' }, 'Send reset link'));
+  root.replaceChildren(authCard(cfg, h('h2', { style: { textAlign: 'center', margin: '4px 0' } }, 'Reset your password'), h('p', { class: 'muted', style: { textAlign: 'center' } }, 'Enter the email you signed up with and we will send you a link.'), form, out,
+    h('p', { class: 'fine' }, h('a', { href: '#/login', onclick: (e) => { e.preventDefault(); root.replaceChildren(); login(root); } }, 'Back to sign in'))));
+}
+function resetView(root) {
+  const cfg = state.cfg; const token = new URLSearchParams(location.hash.split('?')[1] || '').get('token') || '';
+  const [p1, t1] = pwBox('New password (8+ characters)', 'new-password'); const [p2] = pwBox('Repeat new password', 'new-password');
+  const form = h('form', { class: 'stack', onsubmit: (e) => { e.preventDefault(); if (p1.value !== p2.value) { toast('The two passwords do not match.', 'bad'); return; }
+    guard(async () => { await api('auth.reset', { body: { token, password: p1.value } }); location.hash = '#/login?msg=' + encodeURIComponent('Password updated. Sign in with your new password.'); }); } },
+    field('New password', p1), t1, field('Repeat password', p2), h('button', { class: 'btn big green block', type: 'submit' }, 'Save new password'));
+  root.replaceChildren(authCard(cfg, h('h2', { style: { textAlign: 'center', margin: '4px 0' } }, 'Choose a new password'), form,
+    h('p', { class: 'fine' }, h('a', { href: '#/login' }, 'Back to sign in'))));
+}
+
 export function login(root) {
-  const cfg = state.cfg, anyMeta = cfg.meta.facebook;
+  if (location.hash.startsWith('#/reset')) return resetView(root);
+  const cfg = state.cfg, anyMeta = cfg.meta.facebook; pollHandoff();
   const em = h('input', { type: 'email', autocomplete: 'email', placeholder: 'you@example.com', required: true }), pw = h('input', { type: 'password', autocomplete: 'current-password', placeholder: 'Password', required: true }), nm = h('input', { placeholder: 'Your name', autocomplete: 'name' });
   let mode = 'in';
   const submit = h('button', { class: 'btn big green block', type: 'submit' }, 'Sign in');
   const nameField = field('Name', nm); nameField.hidden = true;
   const tabs = ['in', 'up'].map((m) => h('button', { type: 'button', class: 'authtab' + (m === 'in' ? ' on' : ''), onclick: () => { mode = m; tabs.forEach((t, i) => t.classList.toggle('on', ['in', 'up'][i] === m)); submit.textContent = m === 'in' ? 'Sign in' : 'Create account'; nameField.hidden = m === 'in'; pw.autocomplete = m === 'in' ? 'current-password' : 'new-password'; } }, m === 'in' ? 'Sign in' : 'Create account'));
-  const form = h('form', { class: 'stack', onsubmit: (e) => { e.preventDefault(); guard(async () => { await api(mode === 'in' ? 'auth.login' : 'auth.register', { body: { email: em.value, password: pw.value, name: nm.value } }); location.hash = '#/'; location.reload(); }); } },
-    cfg.passwordSignup ? h('div', { class: 'authtabs' }, tabs) : '', nameField, field('Email', em), field('Password', pw), submit);
+  const form = h('form', { class: 'stack', onsubmit: (e) => { e.preventDefault(); guard(async () => { await api(mode === 'in' ? 'auth.login' : 'auth.register', { body: { email: em.value, password: pw.value, name: nm.value } }); location.hash = '#/trending'; location.reload(); }); } },
+    cfg.passwordSignup ? h('div', { class: 'authtabs' }, tabs) : '', nameField, field('Email', em), field('Password', pw), h('div', { class: 'forgot' }, h('a', { href: '#/login', onclick: (e) => { e.preventDefault(); forgotView(root); } }, 'Forgot password?')), h('label', { class: 'showpw' }, h('input', { type: 'checkbox', onchange: (e) => { pw.type = e.target.checked ? 'text' : 'password'; } }), ' Show password'), submit);
   const params = new URLSearchParams((location.hash.split('?')[1]) || ''); const msg = params.get('msg');
   root.append(h('div', { class: 'login' }, h('img', { src: 'assets/img/logo.png', alt: cfg.app || 'Current Recap', class: 'biglogo' }),
     h('p', { class: 'muted', style: { textAlign: 'center' } }, 'Everything you watched, posted and joined on Facebook, Instagram and Threads, organised for later.'),
     msg ? h('div', { class: 'banner' }, msg) : '',
-    h('a', { class: 'fbbtn', href: anyMeta ? 'oauth.php?p=facebook&mode=login' : null, 'aria-disabled': anyMeta ? null : 'true', title: anyMeta ? '' : 'Add your Meta app ID in config.local.php' }, h('img', { src: 'assets/logos/facebook.png', alt: '' }), 'Continue with Facebook'),
+    h('a', { class: 'fbbtn', onclick: anyMeta ? fbSignIn : null, href: anyMeta ? 'oauth.php?p=facebook&mode=login' : null, 'aria-disabled': anyMeta ? null : 'true', title: anyMeta ? '' : 'Add your Meta app ID in config.local.php' }, h('img', { src: 'assets/logos/facebook.png', alt: '' }), 'Continue with Facebook'),
     !anyMeta ? h('p', { class: 'fine' }, 'Facebook login is not set up yet. See the README.') : '',
-    cfg.passwordSignup ? h('div', { class: 'fine' }, 'or use email') : '', cfg.passwordSignup ? form : '',
+    h('div', { class: 'fine' }, 'or sign in with email'), form,   // email sign-in (and Forgot password) always shown; only the Create account tab depends on ALLOW_PASSWORD_SIGNUP
     cfg.devLogin ? devForm() : '',
-    h('p', { class: 'fine' }, h('a', { href: 'privacy.php' }, 'Privacy'), ' · ', h('a', { href: 'terms.php' }, 'Terms'), ' · ', h('a', { href: 'delete-data.php' }, 'Delete my data'))));
+    h('p', { class: 'fine' }, h('a', { href: 'privacy.php' }, 'Privacy'), ' · ', h('a', { href: 'terms.php' }, 'Terms'), ' · ', h('a', { href: 'delete-data.php' }, 'Delete my data')),
+    h('p', { class: 'fine', style: { opacity: '.6' } }, 'Build 20 · password reset')));
 }
 function devForm() {
   const e = h('input', { type: 'email', value: 'dev@example.com' });
   return h('div', { class: 'devbox' }, h('strong', {}, 'Local development login'), h('p', { class: 'muted' }, 'Only shown on localhost.'), field('Email', e),
-    h('button', { class: 'btn ghost', onclick: () => guard(async () => { await api('auth.dev', { body: { email: e.value } }); location.hash = '#/'; location.reload(); }) }, 'Sign in without a password'));
+    h('button', { class: 'btn ghost', onclick: () => guard(async () => { await api('auth.dev', { body: { email: e.value } }); location.hash = '#/trending'; location.reload(); }) }, 'Sign in without a password'));
 }
 
 /* ------------------------------------------------------------ home */

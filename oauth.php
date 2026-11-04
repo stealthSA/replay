@@ -10,4 +10,5 @@ if (!isset(PLATFORMS[$platform])) $go('connections');
 if ($mode === 'login' && $platform !== 'facebook') $mode = 'connect';
 if (!meta_configured($platform)) $go(($mode === 'login' ? 'login' : 'connections') . '?msg=' . rawurlencode(PLATFORMS[$platform]['name'] . ' is not set up on this server yet — add its app ID and secret to config.local.php.'));
 if ($mode === 'connect' && !session_user()) $go('login?msg=' . rawurlencode('Sign in first, then connect your ' . PLATFORMS[$platform]['name'] . ' account.'));
-header('Location: ' . oauth_start_url($platform, $mode)); exit;
+$h = (string)($_GET['h'] ?? ''); $h = preg_match('/^[a-f0-9]{64}$/', $h) ? $h : '';
+header('Location: ' . oauth_start_url($platform, $mode, $h)); exit;

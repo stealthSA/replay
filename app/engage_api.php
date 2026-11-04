@@ -10,6 +10,7 @@ function engage_dispatch(string $action, array $in, array $user, string $method)
 
     switch ($action) {
         case 'trend.list': {
+            if ($get('own') !== '1') { require_once __DIR__ . '/open_trends.php'; open_trends_auto(); }
             trend_refresh_if_stale(300);
             $f = ['kind' => $get('kind'), 'platform' => $get('platform'), 'category' => $get('category'), 'topic' => $get('topic'), 'range' => $get('range', 'week'), 'sort' => $get('sort'), 'samples' => $get('samples')];
             if ($get('own') === '1') {   // the signed-in user's own posts and how they are doing (private unless shared)

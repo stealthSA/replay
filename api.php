@@ -39,6 +39,26 @@ if ($action === 'content.ingest') {
 /* token check used by the extension's setup page */
 if ($action === 'ping') { $tu = token_user((string)($_SERVER['HTTP_X_RECAP_TOKEN'] ?? '')); if (!$tu) fail('Invalid or revoked token', 401); out(['user' => ['email' => $tu['email']]]); }
 
+/* installed-app hand-off after a Facebook sign-in that finished in another browser (see handoff_claim in app/meta.php) */
+if ($action === 'auth.handoff') {
+    if ($method !== 'POST') fail('POST only', 405); check_csrf(); require_once __DIR__ . '/app/meta.php';
+    $uid = handoff_claim((string)($in['secret'] ?? '')); if (!$uid) out(['ok' => false]);
+    $s = db()->prepare('SELECT * FROM users WHERE id=? AND disabled=0'); $s->execute([$uid]); $u = $s->fetch(); if (!$u) out(['ok' => false]);
+    login_user($u); out(['ok' => true]);
+}
+
+/* password reset by e-mail (app/reset.php) */
+if ($action === 'auth.forgot' || $action === 'auth.reset') {
+    if ($method !== 'POST') fail('POST only', 405); check_csrf(); require_once __DIR__ . '/app/reset.php';
+    if ($action === 'auth.forgot') {
+        $email = strtolower(trim((string)($in['email'] ?? ''))); if (!filter_var($email, FILTER_VALIDATE_EMAIL)) fail('Enter a valid email address.');
+        $link = null; try { $link = reset_request($email); } catch (Throwable $t) { error_log('[recap] reset: ' . $t->getMessage()); }
+        $res = ['ok' => true]; if ($link && ((cfg('DEV_LOGIN') && is_loopback()) || cfg('RESET_SHOW_LINK'))) $res['dev_link'] = $link;   // only for local testing
+        out($res);
+    }
+    $err = reset_apply((string)($in['token'] ?? ''), (string)($in['password'] ?? '')); if ($err) fail($err); out(['ok' => true]);
+}
+
 /* auth */
 if (in_array($action, ['auth.login', 'auth.register', 'auth.dev'], true)) {
     if ($method !== 'POST') fail('POST only', 405); check_csrf();
