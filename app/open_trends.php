@@ -166,3 +166,12 @@ function open_trends_load(): array {
     if ($n) trend_run();
     return [$n, $notes];
 }
+
+/** Called when Trending is opened: reloads the public posts if the last load is older than OPEN_TRENDS_AUTO_MINUTES. Never throws; one visitor at a time. */
+function open_trends_auto(): void {
+    $min = (int)cfg('OPEN_TRENDS_AUTO_MINUTES'); if (!cfg('OPEN_TRENDS') || $min <= 0) return;
+    $db = db(); $s = $db->prepare("SELECT v FROM kv WHERE k='open_trends_last'"); $s->execute(); $last = (int)$s->fetchColumn();
+    if (time() - $last < $min * 60) return;
+    $db->prepare("INSERT INTO kv (k, v) VALUES ('open_trends_last', ?) ON CONFLICT(k) DO UPDATE SET v=excluded.v")->execute([(string)time()]);   // claim first, so a slow or failed fetch is not retried on every page view
+    try { open_trends_load(); } catch (Throwable $t) { error_log('[recap] open trends auto: ' . $t->getMessage()); }
+}

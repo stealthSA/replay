@@ -49,9 +49,39 @@ function meta_scopes(string $platform): string {
 }
 
 /** Starts OAuth: returns the provider's authorization URL and remembers state in the session. */
-function oauth_start_url(string $platform, string $mode): string {
+/**
+ * The OAuth "state" is signed with the app key instead of being matched against a session cookie. On phones the sign-in often finishes in a different
+ * browser than it started in (the Facebook app's built-in browser, a Custom Tab, an installed PWA), so the session cookie from the start is not there on return.
+ */
+function oauth_state_make(string $platform, string $mode, string $h = ''): string {
+    $p = rtrim(strtr(base64_encode(json_encode(['p' => $platform, 'm' => $mode, 't' => time(), 'n' => bin2hex(random_bytes(8)), 'h' => $h])), '+/', '-_'), '=');
+    return $p . '.' . hash_hmac('sha256', $p, app_key());
+}
+/** @return array|null ['platform','mode','at'] when the signature is valid and the link is younger than 15 minutes */
+function oauth_state_check(string $state, string $platform): ?array {
+    if (substr_count($state, '.') !== 1) return null;
+    [$p, $sig] = explode('.', $state); if (!hash_equals(hash_hmac('sha256', $p, app_key()), $sig)) return null;
+    $d = json_decode((string)base64_decode(strtr($p, '-_', '+/'), true), true);
+    if (!is_array($d) || ($d['p'] ?? '') !== $platform || !in_array($d['m'] ?? '', ['login', 'connect'], true) || time() - (int)($d['t'] ?? 0) > 900) return null;
+    return ['platform' => $platform, 'mode' => $d['m'], 'at' => (int)$d['t'], 'state' => $state, 'h' => preg_match('/^[a-f0-9]{64}$/', (string)($d['h'] ?? '')) ? $d['h'] : ''];
+}
+
+/**
+ * Hand-off for installed apps (PWA). The Facebook sign-in can finish in a different browser than the installed app (iOS opens a separate sheet), so the app
+ * cannot see that login. The app keeps a secret, sends only its SHA-256 in the sign-in link, and after Facebook finishes the server parks the user id under that hash.
+ * The app then trades its secret for a session. One use, 10 minutes.
+ */
+function handoff_table(): void { db()->exec('CREATE TABLE IF NOT EXISTS login_handoff (h TEXT PRIMARY KEY, user_id INTEGER NOT NULL, at INTEGER NOT NULL)'); }
+function handoff_store(string $h, int $uid): void { handoff_table(); db()->prepare('DELETE FROM login_handoff WHERE at < ?')->execute([time() - 600]); db()->prepare('INSERT OR REPLACE INTO login_handoff (h, user_id, at) VALUES (?,?,?)')->execute([$h, $uid, time()]); }
+function handoff_claim(string $secret): ?int {
+    if (!preg_match('/^[a-f0-9]{32,128}$/', $secret)) return null; handoff_table(); $h = hash('sha256', $secret);
+    $s = db()->prepare('SELECT user_id FROM login_handoff WHERE h=? AND at >= ?'); $s->execute([$h, time() - 600]); $uid = $s->fetchColumn(); if ($uid === false) return null;
+    db()->prepare('DELETE FROM login_handoff WHERE h=?')->execute([$h]); return (int)$uid;
+}
+
+function oauth_start_url(string $platform, string $mode, string $handoff = ''): string {
     session_boot(); $u = meta_urls(); [$id] = meta_credentials($platform);
-    $state = bin2hex(random_bytes(16));
+    $state = oauth_state_make($platform, $mode, $handoff);
     $_SESSION['oauth'] = ['state' => $state, 'platform' => $platform, 'mode' => $mode, 'at' => time()];
     $q = ['client_id' => $id, 'redirect_uri' => redirect_uri($platform), 'state' => $state, 'scope' => meta_scopes($platform), 'response_type' => 'code'];
     $base = ['facebook' => $u['fb_dialog'], 'instagram' => $u['ig_authorize'], 'threads' => $u['th_authorize']][$platform];

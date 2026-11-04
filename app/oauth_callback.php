@@ -10,10 +10,12 @@ session_boot();
 $o = $_SESSION['oauth'] ?? null; unset($_SESSION['oauth']);
 
 if (isset($_GET['error']) || isset($_GET['error_reason'])) {
-    $mode = $o['mode'] ?? 'connect';
+    $o = $o ?: oauth_state_check((string)($_GET['state'] ?? ''), $platform); $mode = $o['mode'] ?? 'login';
     $back(($mode === 'login' ? 'login' : 'connections') . '?msg=' . rawurlencode('Access was not granted — nothing was connected.'));
 }
-if (!$o || $o['platform'] !== $platform || !hash_equals((string)$o['state'], (string)($_GET['state'] ?? '')) || time() - (int)$o['at'] > 900) {
+$sessionOk = $o && $o['platform'] === $platform && hash_equals((string)$o['state'], (string)($_GET['state'] ?? '')) && time() - (int)$o['at'] <= 900;
+if (!$sessionOk) $o = oauth_state_check((string)($_GET['state'] ?? ''), $platform);   // no session cookie (common on phones): trust the signed state instead
+if (!$o) {
     $back('login?msg=' . rawurlencode('That sign-in link expired. Please try again.'));
 }
 $code = (string)($_GET['code'] ?? ''); $code = preg_replace('/#_$/', '', $code);
@@ -37,6 +39,7 @@ if ($platform === 'facebook' && $o['mode'] === 'login') {
     } elseif ($u['disabled']) { $back('login?msg=' . rawurlencode('This account has been disabled.')); }
     else { $db->prepare('UPDATE users SET name=?, picture=COALESCE(?, picture) WHERE id=?')->execute([$profile['name'] ?: $u['name'], $profile['picture'], $u['id']]); }
     login_user($u);
+    $hs = oauth_state_check((string)($_GET['state'] ?? ''), $platform); if (!empty($hs['h'])) handoff_store($hs['h'], (int)$u['id']);   // lets the installed app pick up this login
     $cid = save_connection((int)$u['id'], 'facebook', $profile, $token, $expires, $scopes);
     $c = $db->prepare('SELECT * FROM connections WHERE id=?'); $c->execute([$cid]); sync_connection($c->fetch());
     $back('');

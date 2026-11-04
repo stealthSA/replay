@@ -34,6 +34,8 @@ function cfg(string $key, $default = null) {
             'ENGAGEMENT_INSIGHTS' => false,           // true = also request Instagram/Threads insights permissions (views, shares, watch time). Needs Meta App Review for live use.
             'BID_MIN_CENTS' => 5000,                  // smallest ad bid, in cents of BID_CURRENCY
             'BID_CURRENCY' => 'ZAR',
+            'MAIL_FROM' => '',                        // sender of password-reset e-mails, e.g. no-reply@yourdomain.com (empty = no-reply@ + your domain). Needs working PHP mail() on the host
+            'RESET_SHOW_LINK' => false,               // true = show the reset link on screen instead of relying on e-mail (testing only; anyone could reset any password)
             'ALERT_EMAILS' => false,                  // also e-mail advertisers who tick "e-mail me" (needs working PHP mail())
             // Meta Model API (Muse models). Key stays on the server. Empty key = keyword models only.
             'META_AI_KEY' => '', 'META_AI_BASE_URL' => 'https://api.meta.ai/v1',
@@ -61,6 +63,7 @@ function cfg(string $key, $default = null) {
             'OPEN_TRENDS' => true,                    // false = "Load sample data" and tools/fetch_open_trends.php skip them
             'OPEN_TRENDS_MASTODON' => 'mastodon.social,mastodon.online,fosstodon.org,mstdn.social', // comma list of instances (host, or http://host:port for local tests)
             'OPEN_TRENDS_BLUESKY' => 'https://public.api.bsky.app', // Bluesky public AppView ('' = skip Bluesky)
+            'OPEN_TRENDS_AUTO_MINUTES' => 30,         // Trending refreshes the Mastodon/Bluesky posts by itself when opened and older than this many minutes (0 = off, use refresh.php / the button)
             'OPEN_TRENDS_PER_SOURCE' => 12,           // posts kept from each instance / feed
             'CRON_KEY' => '',                         // secret for refresh.php over the web (cron-job.org etc.). Empty = web refresh disabled (command-line cron still works)
             'INGEST_KEY' => '',                       // secret for licensed-data imports (tools/import_content.php, api.php?a=content.ingest). Empty = disabled
@@ -72,10 +75,15 @@ function cfg(string $key, $default = null) {
     return $c[$key] ?? $default;
 }
 
+function is_https(): bool {
+    $s = $_SERVER;
+    return (!empty($s['HTTPS']) && $s['HTTPS'] !== 'off') || strtolower((string)($s['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https' || strtolower((string)($s['HTTP_X_FORWARDED_SSL'] ?? '')) === 'on'
+        || (string)($s['HTTP_FRONT_END_HTTPS'] ?? '') === 'on' || str_contains((string)($s['HTTP_CF_VISITOR'] ?? ''), '"https"') || (string)($s['SERVER_PORT'] ?? '') === '443';
+}
 function base_url(): string {
     $b = rtrim((string)cfg('BASE_URL'), '/');
     if ($b !== '') return $b;
-    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $https = is_https();
     $dir = rtrim(str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? '/')), '/');
     $dir = preg_replace('#/(meta|auth)$#', '', $dir);
     return ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost') . $dir;
@@ -204,7 +212,7 @@ function migrate(PDO $db): void {
 /* --------------------------------------------------------------- session */
 function session_boot(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
-    $secure = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
+    $secure = is_https();
     session_set_cookie_params(['lifetime' => 60 * 60 * 24 * 30, 'path' => '/', 'secure' => $secure, 'httponly' => true, 'samesite' => 'Lax']);
     session_name('recap_sid');
     session_start();

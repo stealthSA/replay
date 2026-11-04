@@ -15,3 +15,9 @@ FILL IN CONTENT (F1, MotoGP, sport, music, entertainment, tech, fashion, cars...
  b) Schedule it: cPanel > Cron Jobs:  */30 * * * *  /usr/local/bin/php /home/USER/public_html/refresh.php
     or a free web cron (cron-job.org) calling the URL above every 30 minutes.
  c) If it says "Nothing saved", the host blocks outbound HTTPS; ask the host to enable curl / outbound connections.
+
+PASSWORD RESET
+ The sign-in page has "Forgot password?". It e-mails a one-time link (valid 1 hour) using PHP mail(), so the host must be able to send mail.
+ Optional in config.local.php:  'MAIL_FROM' => 'no-reply@yourdomain.com'   (a sender on your own domain is delivered more reliably, check spam at first).
+ If mail does not arrive, look in the PHP error log for "password reset e-mail could not be sent".
+ Facebook-only accounts have no password, so they get no reset e-mail; they sign in with Facebook.

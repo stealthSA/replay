@@ -6,8 +6,8 @@ import * as V from './views.js';
 import * as E from './engage.js';
 
 const NAV = [['trending', 'Trending', 'trend', 'c-pink'], ['home', 'Home', 'home', 'c-yellow'], ['story', 'Stories', 'story', 'c-pink'], ['podcast', 'Podcasts', 'podcast', 'c-cyan'], ['discussion', 'Discussions', 'chat', 'c-purple'], ['post', 'Posts & Reels', 'post', 'c-orange'], ['music', 'Saved music', 'music', 'c-green']];
-const DISC = [['circle', 'My circle suggestions', 'people', 'c-cyan'], ['bids', 'Bid ads', 'megaphone', 'c-orange']];
-const TABS = [NAV[0], NAV[1], ['circle', 'Circle', 'people', 'c-cyan'], DISC[1], ['connections', 'Connect', 'link', 'c-blue']];
+const DISC = [['circle', 'My circle suggestions', 'people', 'c-cyan']];   // Bid ads is hidden
+const TABS = [NAV[0], NAV[1], ['circle', 'Circle', 'people', 'c-cyan'], ['connections', 'Connect', 'link', 'c-blue']];
 let bellC = null;
 const app = document.getElementById('app');
 let token = 0, menu = null, counts = {};
@@ -74,7 +74,8 @@ async function route(keepScroll) {
   const my = ++token; closeMenu();
   const view = $('#view'); view.replaceChildren();
   if (!state.user) { V.login(view); return; }
-  const [path, qs] = (location.hash.slice(2) || 'trending').split('?'); const params = new URLSearchParams(qs || ''); const seg = (path || 'trending').split('/');   // Trending is the landing page
+  const [path, qs] = (location.hash.slice(2) || 'trending').split('?'); if (path === 'bids' || path === 'login') { location.replace('#/trending'); return; }   // Bid ads is hidden; after sign-in always land on Trending
+   const params = new URLSearchParams(qs || ''); const seg = (path || 'trending').split('/');   // Trending is the landing page
   document.querySelectorAll('.navbtn[data-p]').forEach((a) => a.classList.toggle('on', a.dataset.p === seg[0]));
   if (keepScroll !== true) { $('.main')?.scrollTo(0, 0); window.scrollTo(0, 0); }
   const msg = params.get('msg'); if (msg) { toast(msg, params.get('ok') ? 'ok' : 'bad'); }
@@ -85,7 +86,6 @@ async function route(keepScroll) {
     else if (k === 'search') await V.search(view, params);
     else if (k === 'trending') await E.trending(view, params);
     else if (k === 'circle') await E.circle(view, params);
-    else if (k === 'bids') await E.bids(view, params);
     else if (k === 'music') await V.music(view);
     else if (k === 'connections') await V.connections(view, params);
     else if (k === 'settings') await V.settings(view);
